@@ -47,6 +47,38 @@ def get_best_photoinfo(photoInfoArr, exclude=[]):
         return best
 
 
+def archive_topics(yga):
+    logger = logging.getLogger('archive_topics')
+    try:
+        msg_json = yga.messages()
+    except requests.exceptions.HTTPError as err:
+        logger.error("Couldn't download message; %s", err.message)
+        return
+
+    count = msg_json['totalRecords']
+
+    msg_json = yga.messages(count=count)
+    logger.info("Group has %s messages which will be used for TOPICS, got %s", count, msg_json['numRecords'])
+    
+    for message in msg_json['messages']:
+        id = message['messageId']
+        logger.info("Using messageId, fetching topic summary #%d of %d", id, count)
+
+        for i in range(TRIES):
+            try:
+                topic_json = yga.topics(id)
+                break
+            except requests.exceptions.ReadTimeout:
+                logger.error("Read timeout for raw topic %d of %d, retrying", id, count)
+                time.sleep(HOLDOFF)
+            except requests.exceptions.HTTPError as err:
+                logger.error("Grab failed for topic %d of %d", id, count)
+                break
+
+        with file("%s.json" % (id,), 'w') as f:
+            f.write(json.dumps(topic_json, indent=4))
+
+
 def archive_email(yga, save=True, html=True):
     logger = logging.getLogger('archive_email')
     try:
@@ -613,6 +645,8 @@ if __name__ == "__main__":
                     help='Only archive general info about the group')
     po.add_argument('-m', '--members', action='store_true',
                     help='Only archive members')
+    po.add_argument('-t', '--topics', action='store_true',
+                    help='Only archive topics')
 
     pe = p.add_argument_group(title='Email Options')
     pe.add_argument('-s', '--no-save', action='store_true',
@@ -637,9 +671,9 @@ if __name__ == "__main__":
     yga = YahooGroupsAPI(args.group, cookie_jar)
 
     if not (args.email or args.files or args.photos or args.database or args.links or args.calendar or args.about or
-            args.polls or args.attachments or args.members):
+            args.polls or args.attachments or args.members or args.topics):
         args.email = args.files = args.photos = args.database = args.links = args.calendar = args.about = \
-            args.polls = args.attachments = args.members = True
+            args.polls = args.attachments = args.members = args.topics = True
 
     with Mkchdir(args.group):
         log_file_handler = logging.FileHandler('archive.log')
@@ -686,6 +720,9 @@ if __name__ == "__main__":
         if args.members:
             with Mkchdir('members'):
                 archive_members(yga)
+        if args.topics:
+            with Mkchdir('topics'):
+                archive_topics(yga)
 
         if args.warc:
             fhwarc.close()

@@ -33,7 +33,8 @@ class YahooGroupsAPI:
             'statistics': 'v1',
             'polls': 'v1',
             'attachments': 'v1',
-            'members': 'v1'
+            'members': 'v1',
+            'topics' : 'v1'
             }
 
     logger = logging.getLogger(name="YahooGroupsAPI")
