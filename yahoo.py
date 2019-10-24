@@ -24,13 +24,35 @@ TRIES = 10
 hp = HTMLParser()
 
 
+def archive_message_metadata(yga):
+    logger = logging.getLogger('archive_message_metadata')
+    params = {'sortOrder': 'asc', 'direction': 1, 'count': 1000}
+
+    message_metadata = []
+    next_page_start = float('inf')
+
+    logger.info("Archiving message metadata...")
+
+    while next_page_start > 0:
+        msg_json = yga.messages(**params)
+        # TODO: dump json?
+        message_metadata += msg_json['messages']
+        next_page_start = params['start'] = msg_json['nextPageStart']
+        logger.info("Archived message metadata records (%d of %d)", len(message_metadata), msg_json['totalRecords'])
+
+    return message_metadata
+
+
+def archive_message(yga, id):
+    pass
+
+def archive_raw_message(yga, id):
+    logger = logging.getLogger('archive_raw_message')
+    logger.info("Fetching raw message #%d", id)
+    raw_json = yga.messages(id, 'raw')
+
 def archive_email(yga, save=True, html=True):
     logger = logging.getLogger('archive_email')
-    try:
-        msg_json = yga.messages()
-    except requests.exceptions.HTTPError as err:
-        logger.error("Couldn't download message; %s", err.message)
-        return
 
     count = msg_json['totalRecords']
 
@@ -40,17 +62,6 @@ def archive_email(yga, save=True, html=True):
     for message in msg_json['messages']:
         id = message['messageId']
 
-        logger.info("Fetching raw message #%d of %d", id, count)
-        for i in range(TRIES):
-            try:
-                raw_json = yga.messages(id, 'raw')
-                break
-            except requests.exceptions.ReadTimeout:
-                logger.error("Read timeout for raw message %d of %d, retrying", id, count)
-                time.sleep(HOLDOFF)
-            except requests.exceptions.HTTPError as err:
-                logger.error("Raw grab failed for message %d of %d", id, count)
-                break
         if html:
             logger.info("* Fetching html message #%d of %d", id, count)
             for i in range(TRIES):

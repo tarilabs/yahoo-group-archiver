@@ -16,6 +16,9 @@ import requests  # Must be imported after capture_http
 def dummy_contextmanager(*kargs, **kwargs):
     yield
 
+"""Unique value to pass to the count parameter to request and recombine all pages of data available."""
+ALL = object()
+
 
 class YahooGroupsAPI:
     BASE_URI = "https://groups.yahoo.com/api"
@@ -32,6 +35,20 @@ class YahooGroupsAPI:
             'attachments': 'v1',
             'members': 'v1'
             }
+
+    PAGINATION = {
+            'HackGroupInfo': None,
+            'messages': custom,
+            'files': None,
+            'albums': 100 (normal count off by one),
+            'database': None,
+            'links': None,
+            'statistics', None,
+            'polls': 100 (no count),
+            'attachments': 100,
+            'members': 100
+            }
+
 
     logger = logging.getLogger(name="YahooGroupsAPI")
 
